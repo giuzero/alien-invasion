@@ -15,7 +15,7 @@ var steps int = 10000
 
 //true: will clean map after landing, destroying cities invade by two or more
 //alien. After t0 you'll have at most one alien per city. Will they still exist?
-var doIwantFightsAtT0 bool = true
+var doIwantFightsAtT0 bool = false
 
 //true: enable multiple kills at the end of the turn. "MultiKillsMode"
 //false: when an alien arrives in a city, could find just another alien there.
@@ -25,6 +25,9 @@ var killAndDestroyAtTheEndOfShift bool = false
 //false: stop execution if it try to destroy a city with more than 2 invaders
 //true: will switch to MultiKillsMode if needed.
 var autoSwitchKillAndDestroyAtTheEndOfShift bool = false
+
+//destroy and kill aliens if and only if the city is invaded by exactly 2 aliens
+var strictTwoAliensDestroyPolicy bool = true
 
 func main() {
 	aliens := checkingArgs(os.Args)
@@ -64,12 +67,12 @@ func main() {
 	}
 
 	//summary of landing event
-	fmt.Println(whereAliens(status))
+	fmt.Println(WhereAliens(status))
 
 	if doIwantFightsAtT0 {
 		//Destroying cities with more than one alien, killing aliens. Possibly ending the world and kill all the aliens at t0.
 		fmt.Println("\t--- CLEANING ---")
-		multipleKillAndDestroy(status, invaders, cityMap)
+		MultipleKillAndDestroy(status, invaders, cityMap)
 		fmt.Println("\t--- CLEANING ---")
 		if len(status) < 1 || (len(cityMap) < 1 && len(status) < 1) {
 			fmt.Println("Your cleaning erased the Earth...")
@@ -85,23 +88,26 @@ func main() {
 				continue
 			}
 			currentCity := status[k]
-			nextCity := nextDestination(currentCity, cityMap)
+			nextCity := NextDestination(currentCity, cityMap)
 
 			status[k] = nextCity
-			invaders[currentCity] = remove(invaders[currentCity], k)
+			invaders[currentCity] = RemoveAlien(invaders[currentCity], k)
 			invaders[nextCity] = append(invaders[nextCity], k)
 			fmt.Printf("Alien %d is going to %s\n", k, status[k])
 
 			if !killAndDestroyAtTheEndOfShift {
 				//Just two alien and no more are needed to destroy the city
-				if len(invaders[nextCity]) > 1 {
-					preciseKillAndDestroy(nextCity, status, invaders, cityMap)
+				if len(invaders[nextCity]) > 1 && !strictTwoAliensDestroyPolicy {
+					PreciseKillAndDestroy(nextCity, status, invaders, cityMap)
+				}
+				if len(invaders[nextCity]) == 2 && strictTwoAliensDestroyPolicy {
+					PreciseKillAndDestroy(nextCity, status, invaders, cityMap)
 				}
 			}
 
 		}
 		if killAndDestroyAtTheEndOfShift {
-			multipleKillAndDestroy(status, invaders, cityMap)
+			MultipleKillAndDestroy(status, invaders, cityMap)
 		}
 
 		fmt.Printf("\nSnapshot at the END of STEP %d: aliens alive %d of %d; standing cities: %d of %d.\n\n", i, len(status), aliens, len(cityMap), numberOfCitiesBeforeSiege)
@@ -220,7 +226,7 @@ func landing(worldMap map[string]map[string]string, howManyAliens int) (map[int]
 }
 
 //to choose the next alien destination
-func nextDestination(city string, currentMapState map[string]map[string]string) string {
+func NextDestination(city string, currentMapState map[string]map[string]string) string {
 	availableDirections := currentMapState[city]
 	var nextCity string = city
 	//choosing currentMapState[city][0] everytime would have been more efficient, but I don't like this behaviour
@@ -240,7 +246,7 @@ func nextDestination(city string, currentMapState map[string]map[string]string) 
 }
 
 //print alien location
-func whereAliens(alienStatus map[int]string) string {
+func WhereAliens(alienStatus map[int]string) string {
 	//I could have a lot of alien
 	b := new(bytes.Buffer)
 	for key, value := range alienStatus {
@@ -251,7 +257,7 @@ func whereAliens(alienStatus map[int]string) string {
 
 //given a city, it will kill its invaders, it will destroy the city and remove it from the map
 //to be used in "precise mode"
-func preciseKillAndDestroy(city string, alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) {
+func PreciseKillAndDestroy(city string, alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) {
 	fighters := invaders[city]
 	if len(fighters) > 2 && !killAndDestroyAtTheEndOfShift {
 		fmt.Println("Multiple kills disabled, can't destroy ", city)
@@ -262,7 +268,8 @@ func preciseKillAndDestroy(city string, alienStatus map[int]string, invaders map
 		} else {
 			fmt.Println("Set global variables\n\tkillAndDestroyAtTheEndOfShift to true")
 			fmt.Println("or try cleaning the map after the landing setting doIwantFightsAtT0 true")
-			fmt.Println("maybe using a number of aliens N closer to the number of cities C.")
+			fmt.Println("maybe using a number of aliens N closer to the number of cities C,")
+			fmt.Println("or set strictTwoAliensDestroyPolicy to true to enter this method if and only if N in {city} is 2.")
 			os.Exit(2)
 		}
 	}
@@ -279,11 +286,11 @@ func preciseKillAndDestroy(city string, alienStatus map[int]string, invaders map
 }
 
 //It looks for cities with more then one invader, then destroy these cities and their invaders
-func multipleKillAndDestroy(alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) {
+func MultipleKillAndDestroy(alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) {
 
 	for city, aliens := range invaders {
 		if len(aliens) > 1 {
-			multipleKillMessage(city, aliens)
+			MultipleKillMessagePrinter(city, aliens)
 			for alienIndex := range aliens {
 				delete(alienStatus, aliens[alienIndex])
 			}
@@ -298,13 +305,13 @@ func multipleKillAndDestroy(alienStatus map[int]string, invaders map[string][]in
 }
 
 //remove one alien from the aliens array
-func remove(aliens []int, alien int) []int {
-	aliens[indexOfAlien(aliens, alien)] = aliens[len(aliens)-1]
+func RemoveAlien(aliens []int, alien int) []int {
+	aliens[IndexOfAlien(aliens, alien)] = aliens[len(aliens)-1]
 	return aliens[:len(aliens)-1]
 }
 
 //find the index to remove
-func indexOfAlien(aliens []int, alien int) int {
+func IndexOfAlien(aliens []int, alien int) int {
 	for k, v := range aliens {
 		if alien == v {
 			return k
@@ -314,7 +321,7 @@ func indexOfAlien(aliens []int, alien int) int {
 }
 
 //to print summary of detruction event
-func multipleKillMessage(city string, fighters []int) {
+func MultipleKillMessagePrinter(city string, fighters []int) {
 
 	fmt.Printf("Alien %d", fighters[0])
 	for alien := range fighters[1 : len(fighters)-1] {

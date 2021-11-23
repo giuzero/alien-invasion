@@ -1,6 +1,6 @@
 Seul south=Busan
 Busan north=Seul south=Hiroshima east=Kyoto
-Hiroshima east=Osaka
+Hiroshima north=Busan east=Osaka
 Osaka north=Kyoto south=Kobe west=Hiroshima east=Nagoya
 Kyoto south=Osaka west=Busan east=Kanazawa
 Kobe north=Osaka
