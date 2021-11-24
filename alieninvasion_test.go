@@ -483,8 +483,6 @@ func TestInStepTestKillAndDestroy(t *testing.T) {
 
 	//t3 will destroy Milan and 14
 
-	//alienStatus and invaders will be the same, will remove Milan from map, as a city and as direction
-
 	t3WorldMap := make(map[string]map[string]string)
 	t3WorldMap["Venice"] = make(map[string]string)
 	t3WorldMap["cityWithNoAliens"] = make(map[string]string)
