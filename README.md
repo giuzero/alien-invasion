@@ -8,9 +8,11 @@ go run .\alieninvasion.go 4
 Being N the number of aliens and C the number of cities on the map, there are 2 type of landing:
 
 >N<=C
+
 In each city, at most one alien will land
 
-N>C
+>N>C
+
 Random landing
 
 ## Destruction behaviour modifiers
