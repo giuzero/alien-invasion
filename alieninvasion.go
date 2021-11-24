@@ -11,26 +11,22 @@ import (
 )
 
 //number of steps
-var steps int = 10000
+var steps int = 10
 
-//true: will clean map after landing, destroying cities invade by two or more
+//true: will "clean" the map just after landing, destroying cities invade by two or more
 //alien. After t0 you'll have at most one alien per city. Will they still exist?
 var doIwantFightsAtT0 bool = false
 
-//true: enable multiple kills at the end of the turn. "MultiKillsMode"
-//false: when an alien arrives in a city, could find just another alien there.
-//let's call it "precise mode"
+//true: enable kills at the end of the turn/step.
+//false: when an alien arrives in a city, could find one or more aliens there.
+//Will kill an destroy during the step
 var killAndDestroyAtTheEndOfShift bool = false
 
-//false: stop execution if it try to destroy a city with more than 2 invaders
-//true: will switch to MultiKillsMode if needed.
-var autoSwitchKillAndDestroyAtTheEndOfShift bool = false
-
 //destroy and kill aliens if and only if the city is invaded by exactly 2 aliens
-var strictTwoAliensDestroyPolicy bool = true
+var strictTwoAliensDestroyPolicy bool = false
 
 func main() {
-	aliens := checkingArgs(os.Args)
+	aliens := CheckingArgs(os.Args)
 	if aliens <= 0 {
 		return
 	}
@@ -42,7 +38,7 @@ func main() {
 		return
 	}
 
-	cityMap := createMap(cityMapFile)
+	cityMap := CreateMap(cityMapFile)
 
 	//I want 2 different behaviours based on the number of
 	//the aliens N compared to the number of the city C:
@@ -61,9 +57,9 @@ func main() {
 	numberOfCitiesBeforeSiege := len(cityMap)
 
 	if aliens <= numberOfCitiesBeforeSiege {
-		status, invaders = exclusiveLanding(cityMap, aliens)
+		status, invaders = ExclusiveLanding(cityMap, aliens)
 	} else {
-		status, invaders = landing(cityMap, aliens)
+		status, invaders = Landing(cityMap, aliens)
 	}
 
 	//summary of landing event
@@ -72,7 +68,7 @@ func main() {
 	if doIwantFightsAtT0 {
 		//Destroying cities with more than one alien, killing aliens. Possibly ending the world and kill all the aliens at t0.
 		fmt.Println("\t--- CLEANING ---")
-		MultipleKillAndDestroy(status, invaders, cityMap)
+		OutStepKillAndDestroy(status, invaders, cityMap, false)
 		fmt.Println("\t--- CLEANING ---")
 		if len(status) < 1 || (len(cityMap) < 1 && len(status) < 1) {
 			fmt.Println("Your cleaning erased the Earth...")
@@ -96,32 +92,38 @@ func main() {
 			fmt.Printf("Alien %d is going to %s\n", k, status[k])
 
 			if !killAndDestroyAtTheEndOfShift {
-				//Just two alien and no more are needed to destroy the city
-				if len(invaders[nextCity]) > 1 && !strictTwoAliensDestroyPolicy {
-					PreciseKillAndDestroy(nextCity, status, invaders, cityMap)
+				//STRICT MODE: Just two alien and no more are needed to destroy the city
+				if (len(invaders[nextCity]) > 1 && !strictTwoAliensDestroyPolicy) || (len(invaders[nextCity]) == 2 && strictTwoAliensDestroyPolicy) {
+					InStepKillAndDestroy(nextCity, status, invaders, cityMap)
 				}
-				if len(invaders[nextCity]) == 2 && strictTwoAliensDestroyPolicy {
-					PreciseKillAndDestroy(nextCity, status, invaders, cityMap)
-				}
+
 			}
 
 		}
 		if killAndDestroyAtTheEndOfShift {
-			MultipleKillAndDestroy(status, invaders, cityMap)
+			OutStepKillAndDestroy(status, invaders, cityMap, strictTwoAliensDestroyPolicy)
 		}
 
 		fmt.Printf("\nSnapshot at the END of STEP %d: aliens alive %d of %d; standing cities: %d of %d.\n\n", i, len(status), aliens, len(cityMap), numberOfCitiesBeforeSiege)
-		if len(status) < 1 || (len(cityMap) < 1 && len(status) < 1) {
+		if len(cityMap) < 1 && len(status) >= 1 {
 			fmt.Println("Earth died at step ", i)
+			break
+		}
+		if len(cityMap) >= 1 && len(status) < 1 {
+			fmt.Println("Aliens went extinct at step ", i)
+			break
+		}
+		if len(cityMap) < 1 && len(status) < 1 {
+			fmt.Println("Total destruction at step ", i)
 			break
 		}
 	}
 
-	printMap(cityMap)
+	PrintMap(cityMap)
 
 }
 
-func checkingArgs(inputArgs []string) int {
+func CheckingArgs(inputArgs []string) int {
 	if len(inputArgs) <= 1 {
 		fmt.Println("Wrong number of arguments, try again. I need one positive integer number as argument.\ne.g.: >> go run alienivasion 4")
 		return 0
@@ -141,7 +143,7 @@ func checkingArgs(inputArgs []string) int {
 }
 
 //Output map: is a map of maps k1=city v1=map[k2:v2], k2=road to city, v2=direction
-func createMap(inputFileMap []uint8) map[string]map[string]string {
+func CreateMap(inputFileMap []uint8) map[string]map[string]string {
 	cityMapStringArray := strings.Split(string(inputFileMap), "\r\n")
 	var cityMap = map[string]map[string]string{}
 	for i := 0; i < len(cityMapStringArray); i++ {
@@ -156,7 +158,7 @@ func createMap(inputFileMap []uint8) map[string]map[string]string {
 }
 
 //to print out the citymap in the same format of the file
-func printMap(cityMap map[string]map[string]string) {
+func PrintMap(cityMap map[string]map[string]string) {
 	fmt.Print("\n\tMAP:\n")
 	for k, v := range cityMap {
 		fmt.Printf(k)
@@ -168,7 +170,7 @@ func printMap(cityMap map[string]map[string]string) {
 }
 
 //to land max one alien per city
-func exclusiveLanding(worldMap map[string]map[string]string, howManyAliens int) (map[int]string, map[string][]int) {
+func ExclusiveLanding(worldMap map[string]map[string]string, howManyAliens int) (map[int]string, map[string][]int) {
 	tmp := make(map[string]map[string]string)
 	for k, v := range worldMap {
 		tmp[k] = v
@@ -203,7 +205,7 @@ func exclusiveLanding(worldMap map[string]map[string]string, howManyAliens int) 
 }
 
 //to land aliem randomly in the mapp
-func landing(worldMap map[string]map[string]string, howManyAliens int) (map[int]string, map[string][]int) {
+func Landing(worldMap map[string]map[string]string, howManyAliens int) (map[int]string, map[string][]int) {
 
 	alienStatus := make(map[int]string)
 	invaders := make(map[string][]int)
@@ -256,41 +258,28 @@ func WhereAliens(alienStatus map[int]string) string {
 }
 
 //given a city, it will kill its invaders, it will destroy the city and remove it from the map
-//to be used in "precise mode"
-func PreciseKillAndDestroy(city string, alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) {
+func InStepKillAndDestroy(city string, alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) (map[int]string, map[string][]int, map[string]map[string]string) {
 	fighters := invaders[city]
-	if len(fighters) > 2 && !killAndDestroyAtTheEndOfShift {
-		fmt.Println("Multiple kills disabled, can't destroy ", city)
-		if autoSwitchKillAndDestroyAtTheEndOfShift {
-			fmt.Println("Switching to MultiKillMode")
-			killAndDestroyAtTheEndOfShift = true
-			return
-		} else {
-			fmt.Println("Set global variables\n\tkillAndDestroyAtTheEndOfShift to true")
-			fmt.Println("or try cleaning the map after the landing setting doIwantFightsAtT0 true")
-			fmt.Println("maybe using a number of aliens N closer to the number of cities C,")
-			fmt.Println("or set strictTwoAliensDestroyPolicy to true to enter this method if and only if N in {city} is 2.")
-			os.Exit(2)
-		}
-	}
-	fmt.Printf("%s has been destroyed by Alien %d and Alien %d!\n", city, fighters[0], fighters[1])
+	FightMessagePrinter(city, fighters)
+
 	delete(invaders, city)
-	delete(alienStatus, fighters[0])
-	delete(alienStatus, fighters[1])
+	for alienIndex := range fighters {
+		delete(alienStatus, fighters[alienIndex])
+	}
 	delete(cityMap, city)
 	for k := range cityMap {
 		//if it exists will be deleted
 		delete(cityMap[k], city)
 	}
-
+	return alienStatus, invaders, cityMap
 }
 
 //It looks for cities with more then one invader, then destroy these cities and their invaders
-func MultipleKillAndDestroy(alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) {
+func OutStepKillAndDestroy(alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string, strictMode bool) (map[int]string, map[string][]int, map[string]map[string]string) {
 
 	for city, aliens := range invaders {
-		if len(aliens) > 1 {
-			MultipleKillMessagePrinter(city, aliens)
+		if (len(aliens) > 1 && !strictMode) || (len(aliens) == 2 && strictMode) {
+			FightMessagePrinter(city, aliens)
 			for alienIndex := range aliens {
 				delete(alienStatus, aliens[alienIndex])
 			}
@@ -302,6 +291,7 @@ func MultipleKillAndDestroy(alienStatus map[int]string, invaders map[string][]in
 			delete(invaders, city)
 		}
 	}
+	return alienStatus, invaders, cityMap
 }
 
 //remove one alien from the aliens array
@@ -321,11 +311,11 @@ func IndexOfAlien(aliens []int, alien int) int {
 }
 
 //to print summary of detruction event
-func MultipleKillMessagePrinter(city string, fighters []int) {
+func FightMessagePrinter(city string, fighters []int) {
 
-	fmt.Printf("Alien %d", fighters[0])
+	fmt.Printf("%s has been destroyed by Alien %d", city, fighters[0])
 	for alien := range fighters[1 : len(fighters)-1] {
 		fmt.Printf(", Alien %d", fighters[1 : len(fighters)-1][alien])
 	}
-	fmt.Printf(" and Alien %d destroyed %s\n", fighters[len(fighters)-1], city)
+	fmt.Printf(" and Alien %d\n", fighters[len(fighters)-1])
 }
