@@ -20,7 +20,7 @@ var doIwantFightsAtT0 bool = false
 //true: enable kills at the end of the turn/step.
 //false: when an alien arrives in a city, could find one or more aliens there.
 //Will kill an destroy during the step
-var killAndDestroyAtTheEndOfShift bool = false
+var killAndDestroyAtTheEndOfStep bool = false
 
 //destroy and kill aliens if and only if the city is invaded by exactly 2 aliens
 var strictTwoAliensDestroyPolicy bool = false
@@ -49,7 +49,7 @@ func main() {
 	//Aliens land wherever they want
 
 	//these are mirrored maps:
-	//alientstatus[who]=where
+	//status[who]=where
 	//invaders[where][]{who}
 	status := make(map[int]string)
 	invaders := make(map[string][]int)
@@ -91,8 +91,8 @@ func main() {
 			invaders[nextCity] = append(invaders[nextCity], k)
 			fmt.Printf("Alien %d is going to %s\n", k, status[k])
 
-			if !killAndDestroyAtTheEndOfShift {
-				//STRICT MODE: Just two alien and no more are needed to destroy the city
+			if !killAndDestroyAtTheEndOfStep {
+				//STRICT MODE: Just two alien and no more are needed to destroy the city (strictTwoAliensDestroyPolicy==true)
 				if (len(invaders[nextCity]) > 1 && !strictTwoAliensDestroyPolicy) || (len(invaders[nextCity]) == 2 && strictTwoAliensDestroyPolicy) {
 					InStepKillAndDestroy(nextCity, status, invaders, cityMap)
 				}
@@ -100,7 +100,7 @@ func main() {
 			}
 
 		}
-		if killAndDestroyAtTheEndOfShift {
+		if killAndDestroyAtTheEndOfStep {
 			OutStepKillAndDestroy(status, invaders, cityMap, strictTwoAliensDestroyPolicy)
 		}
 
@@ -260,7 +260,11 @@ func WhereAliens(alienStatus map[int]string) string {
 //given a city, it will kill its invaders, it will destroy the city and remove it from the map
 func InStepKillAndDestroy(city string, alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) (map[int]string, map[string][]int, map[string]map[string]string) {
 	//more than 2 invaders rule is checked outside
+	//I would destroy also cities with at least one alien invaders
 	fighters := invaders[city]
+	if len(fighters) == 0 {
+		return alienStatus, invaders, cityMap
+	}
 	FightMessagePrinter(city, fighters)
 
 	delete(invaders, city)
@@ -311,9 +315,13 @@ func IndexOfAlien(aliens []int, alien int) int {
 	return -1 //not found.
 }
 
-//to print summary of detruction event
+//to print summary of destruction event
 func FightMessagePrinter(city string, fighters []int) {
 
+	if len(fighters) == 1 {
+		fmt.Printf("%s has been destroyed by Alien %d. It is too powerful.", city, fighters[0])
+		return
+	}
 	fmt.Printf("%s has been destroyed by Alien %d", city, fighters[0])
 	for alien := range fighters[1 : len(fighters)-1] {
 		fmt.Printf(", Alien %d", fighters[1 : len(fighters)-1][alien])

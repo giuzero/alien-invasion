@@ -25,7 +25,7 @@ var doIwantFightsAtT0 bool = false
 //true: enable kills at the end of the turn/step.
 //false: when an alien arrives in a city, could find one or more aliens already there.
 //Will kill an destroy during the step
-var killAndDestroyAtTheEndOfShift bool = false
+var killAndDestroyAtTheEndOfStep bool = false
 
 //destroy and kill aliens if and only if the city is invaded by exactly 2 aliens
 var strictTwoAliensDestroyPolicy bool = false
