@@ -201,6 +201,98 @@ func TestCheckingArgs(t *testing.T) {
 	}
 }
 
+func TestInStepKillAndDestroy(t *testing.T) {
+
+	worldMap2 := make(map[string]map[string]string)
+	worldMap2["Rome"] = make(map[string]string)
+	worldMap2["Rome"]["Milan"] = "north"
+	worldMap2["Milan"] = make(map[string]string)
+	worldMap2["Milan"]["Rome"] = "south"
+	worldMap2["Milan"]["Venice"] = "east"
+	worldMap2["Venice"] = make(map[string]string)
+	worldMap2["Venice"]["Milan"] = "west"
+
+	worldMap1 := make(map[string]map[string]string)
+	worldMap1["Pescara"] = make(map[string]string)
+	worldMap1["Pescara"]["Turin"] = "north"
+	worldMap1["Turin"] = make(map[string]string)
+	worldMap1["Turin"]["Pescara"] = "south"
+	worldMap1["Turin"]["Gdansk"] = "east"
+	worldMap1["Gdansk"] = make(map[string]string)
+	worldMap1["Gdansk"]["Turin"] = "west"
+
+	alienStatus2 := make(map[int]string)
+	alienStatus2[1] = "Rome"
+	alienStatus2[2] = "Rome"
+	alienStatus2[3] = "Rome"
+	alienStatus2[4] = "Rome"
+	alienStatus2[5] = "Milan"
+	alienStatus2[9] = "Milan"
+
+	alienStatus1 := make(map[int]string)
+	alienStatus1[1] = "Pescara"
+	alienStatus1[2] = "Turin"
+	alienStatus1[3] = "Gdansk"
+
+	invaders2 := make(map[string][]int)
+	invaders2["Rome"] = []int{1, 2, 3, 4}
+	invaders2["Milan"] = []int{5, 9}
+
+	invaders1 := make(map[string][]int)
+	invaders1["Pescara"] = []int{1}
+	invaders1["Turin"] = []int{2}
+	invaders1["Gdansk"] = []int{3}
+
+	tmp1, tmp2, tmp3 := alienStatus1, invaders1, worldMap1
+	tmp4, tmp5, tmp6 := alienStatus2, invaders2, worldMap2
+	ret1, ret2, ret3 := OutStepKillAndDestroy(tmp1, tmp2, tmp3, false)
+	ret4, ret5, ret6 := OutStepKillAndDestroy(tmp4, tmp5, tmp6, true)
+
+	if !(len(tmp1) == len(ret1) &&
+		len(tmp2) == len(ret2) &&
+		len(tmp3) == len(ret3)) {
+		t.Errorf("Test failed")
+	}
+
+	if !(len(tmp4) == len(ret4)-1 &&
+		len(tmp5) == len(ret5)-1 &&
+		len(tmp6) == len(ret6)-1) {
+		t.Errorf("Test failed")
+	}
+
+	for k := range alienStatus1 {
+		if !(alienStatus1[k] == tmp1[k]) {
+			t.Errorf("Test failed")
+		}
+	}
+	for k := range invaders1 {
+		if !(len(invaders1[k]) != len(tmp2[k])) {
+			t.Errorf("Test failed")
+		}
+	}
+	for k := range worldMap1 {
+		if !(len(worldMap1[k]) != len(tmp3[k])) {
+			t.Errorf("Test failed")
+		}
+	}
+	for k := range alienStatus2 {
+		if !(alienStatus2[k] == "Rome") {
+			t.Errorf("Test failed")
+		}
+	}
+	for k := range invaders2 {
+		if !(len(invaders2[k]) != len(tmp2[k])) {
+			t.Errorf("Test failed")
+		}
+	}
+	for k := range worldMap1 {
+		if !(len(worldMap1[k]) != len(tmp3[k])) {
+			t.Errorf("Test failed")
+		}
+	}
+
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
