@@ -19,13 +19,13 @@ Random landing
 User can decide how destruction happens
 ```
 //true: will "clean" the map just after landing, destroying cities invaded by two (strict = true)
-//or more (strict = false) alien. After t0 you'll have at most one alien per city. Will they still exist?
+//or more (strict = false) aliens. After t0 you'll have at most one alien per city. Will they still exist?
 var doIwantFightsAtT0 bool = false
 
 //true: enable kills at the end of the turn/step.
 //false: when an alien arrives in a city, could find one or more aliens already there.
 //Will kill an destroy during the step
-var killAndDestroyAtTheEndOfShift bool = true
+var killAndDestroyAtTheEndOfShift bool = false
 
 //destroy and kill aliens if and only if the city is invaded by exactly 2 aliens
 var strictTwoAliensDestroyPolicy bool = false
