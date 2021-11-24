@@ -8,22 +8,26 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //number of steps
-var steps int = 10
+var steps int = 10000
 
-//true: will "clean" the map just after landing, destroying cities invade by two or more
-//alien. After t0 you'll have at most one alien per city. Will they still exist?
+//Destroy policy: destroy and kill aliens if and only if the city is invaded by exactly 2 aliens
+var strictTwoAliensDestroyPolicy bool = false
+
+//true: will "clean" the map just after landing, destroying cities invaded by two or more aliens.
+//After t0 you'll have at most one alien per city. Will any cities still exist?
+//Does not care about Destroy policy
 var doIwantFightsAtT0 bool = false
 
-//true: enable kills at the end of the turn/step.
-//false: when an alien arrives in a city, could find one or more aliens there.
-//Will kill an destroy during the step
+//true: enable kills and destruction only at the end of the turn/step so after all the aliens that
+//survived the previous step move, if not trapped alone and if killing policy is respected.
+//false: when an alien arrives in a city, could find one or more aliens already there.
+//Would kill and destroy during the step, as soon as the alien arrives in the city.
+//If aliens don't move, don't kill. Must respect the destroy policy
 var killAndDestroyAtTheEndOfStep bool = false
-
-//destroy and kill aliens if and only if the city is invaded by exactly 2 aliens
-var strictTwoAliensDestroyPolicy bool = false
 
 func main() {
 	aliens := CheckingArgs(os.Args)
@@ -32,7 +36,7 @@ func main() {
 	}
 	//ASSUMPTION: map file is always well formed and there are no isolated cities (rows containg just the city name, with no available directions)
 	//I'll use map datatype to keep reference on data and because in this use case order is not important.
-	cityMapFile, err := ioutil.ReadFile("marvinsplan.txt")
+	cityMapFile, err := ioutil.ReadFile("map_file.txt")
 	if err != nil {
 		fmt.Println("Can't read the map file.", err)
 		return
@@ -95,6 +99,7 @@ func main() {
 				//STRICT MODE: Just two alien and no more are needed to destroy the city (strictTwoAliensDestroyPolicy==true)
 				if (len(invaders[nextCity]) > 1 && !strictTwoAliensDestroyPolicy) || (len(invaders[nextCity]) == 2 && strictTwoAliensDestroyPolicy) {
 					InStepKillAndDestroy(nextCity, status, invaders, cityMap)
+
 				}
 
 			}
@@ -106,6 +111,7 @@ func main() {
 
 		fmt.Printf("\nSnapshot at the END of STEP %d: aliens alive %d of %d; standing cities: %d of %d.\n\n", i, len(status), aliens, len(cityMap), numberOfCitiesBeforeSiege)
 		if len(cityMap) < 1 && len(status) >= 1 {
+			//was one the cases in dev phase, there several waves of aliens...
 			fmt.Println("Earth died at step ", i)
 			break
 		}
@@ -183,6 +189,7 @@ func ExclusiveLanding(worldMap map[string]map[string]string, howManyAliens int) 
 	//It is not important for my purpose since I need a "pseudo-random" item
 	for i := 1; i <= howManyAliens; i++ {
 		howManyCities := len(tmp)
+		rand.Seed(time.Now().UnixNano())
 		seed := rand.Intn(howManyCities)
 		j := 0
 		for k := range tmp {
@@ -211,6 +218,7 @@ func Landing(worldMap map[string]map[string]string, howManyAliens int) (map[int]
 	invaders := make(map[string][]int)
 
 	for i := 1; i <= howManyAliens; i++ {
+		rand.Seed(time.Now().UnixNano())
 		seed := rand.Intn(len(worldMap))
 		j := 0
 		for k := range worldMap {
@@ -236,11 +244,13 @@ func NextDestination(city string, currentMapState map[string]map[string]string) 
 	if len(availableDirections) == 0 {
 		return nextCity
 	}
+	rand.Seed(time.Now().UnixNano())
 	seed := rand.Intn(len(availableDirections))
 	j := 0
 	for k := range availableDirections {
 		if j == seed {
 			nextCity = k
+			break
 		}
 		j++
 	}
@@ -326,5 +336,5 @@ func FightMessagePrinter(city string, fighters []int) {
 	for alien := range fighters[1 : len(fighters)-1] {
 		fmt.Printf(", Alien %d", fighters[1 : len(fighters)-1][alien])
 	}
-	fmt.Printf(" and Alien %d\n", fighters[len(fighters)-1])
+	fmt.Printf(" and Alien %d!\n", fighters[len(fighters)-1])
 }
