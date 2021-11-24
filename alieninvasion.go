@@ -259,6 +259,7 @@ func WhereAliens(alienStatus map[int]string) string {
 
 //given a city, it will kill its invaders, it will destroy the city and remove it from the map
 func InStepKillAndDestroy(city string, alienStatus map[int]string, invaders map[string][]int, cityMap map[string]map[string]string) (map[int]string, map[string][]int, map[string]map[string]string) {
+	//more than 2 invaders rule is checked outside
 	fighters := invaders[city]
 	FightMessagePrinter(city, fighters)
 

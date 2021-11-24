@@ -16,7 +16,7 @@ In each city, at most one alien will land
 Random landing
 
 ## Destruction behaviour modifiers
-User can decide how destruction happens
+User can decide how destruction happens, setting global variables
 ```
 //true: will "clean" the map just after landing, destroying cities invaded by two (strict = true)
 //or more (strict = false) aliens. After t0 you'll have at most one alien per city. Will they still exist?
